@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { RefreshCw, MapPin, Settings, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -11,13 +11,16 @@ import { WeatherIcon } from "@/components/weather-icon"
 import { CityManager } from "@/components/city-manager"
 import { AuthService, type User as UserType } from "@/lib/auth"
 import {
-  getCurrentWeather,
-  getWeatherForecast,
-  getMultipleCitiesWeather,
+  // getCurrentWeather,
+  // getWeatherForecast,
+  // getMultipleCitiesWeather,
   type WeatherData,
   type ForecastDay,
 } from "@/lib/weather-api"
 import { AppLogo } from "@/components/app-logo"
+
+// Default cities moved outside component to prevent infinite loops
+const defaultCities = ["Mexicali", "Tijuana", "Madrid", "Beijing", "Buenos Aires"]
 
 export default function RainyDaysApp() {
   const [activeTab, setActiveTab] = useState("weather")
@@ -31,9 +34,6 @@ export default function RainyDaysApp() {
   const [error, setError] = useState<string | null>(null)
   const [showCityManager, setShowCityManager] = useState(false)
   const [loginError, setLoginError] = useState<string | null>(null)
-
-  // Default cities for non-logged in users
-  const defaultCities = ["Mexicali", "Tijuana", "Madrid", "Beijing", "Buenos Aires"]
 
   useEffect(() => {
     const currentUser = AuthService.getCurrentUser()
@@ -57,9 +57,79 @@ export default function RainyDaysApp() {
     }
   }, [])
 
+  const loadWeatherData = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+
+    try {
+      // TEMPORARY: Mock data while API is rate limited
+      const mockWeather = {
+        city: "Mexicali",
+        country: "México",
+        temperature: 25,
+        maxTemp: 30,
+        minTemp: 18,
+        humidity: 65,
+        windSpeed: 12,
+        description: "Soleado",
+        weatherCode: 0
+      }
+
+      const mockForecast = [
+        { date: "2024-01-15", day: "Hoy", maxTemp: 30, minTemp: 18, weatherCode: 0 },
+        { date: "2024-01-16", day: "Mañana", maxTemp: 28, minTemp: 20, weatherCode: 1 },
+        { date: "2024-01-17", day: "Miércoles", maxTemp: 32, minTemp: 19, weatherCode: 2 },
+        { date: "2024-01-18", day: "Jueves", maxTemp: 29, minTemp: 17, weatherCode: 0 },
+        { date: "2024-01-19", day: "Viernes", maxTemp: 31, minTemp: 21, weatherCode: 1 },
+        { date: "2024-01-20", day: "Sábado", maxTemp: 27, minTemp: 16, weatherCode: 3 },
+        { date: "2024-01-21", day: "Domingo", maxTemp: 33, minTemp: 22, weatherCode: 0 }
+      ]
+
+      const mockCities = defaultCities.map((city, index) => ({
+        city,
+        country: "País",
+        temperature: 20 + index * 3,
+        maxTemp: 25 + index * 2,
+        minTemp: 15 + index,
+        humidity: 60,
+        windSpeed: 10,
+        description: "Despejado",
+        weatherCode: 0
+      }))
+
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 500))
+
+      setCurrentWeather(mockWeather)
+      setForecast(mockForecast)
+      setCitiesWeather(mockCities)
+
+      // TODO: Replace with real API calls when rate limit resets
+      /*
+      const selectedCity = user?.selectedCity || "Mexicali"
+      const citiesToLoad = user?.customCities || defaultCities
+
+      const [weather, forecastData, citiesData] = await Promise.all([
+        getCurrentWeather(selectedCity),
+        getWeatherForecast(selectedCity),
+        getMultipleCitiesWeather(citiesToLoad),
+      ])
+
+      setCurrentWeather(weather)
+      setForecast(forecastData)
+      setCitiesWeather(citiesData)
+      */
+    } catch (err) {
+      setError("Error al cargar los datos del clima. Usando datos de ejemplo.")
+      console.error("Weather API Error:", err)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
   useEffect(() => {
     loadWeatherData()
-  }, [user])
+  }, [loadWeatherData])
 
   useEffect(() => {
     // Extend session on user activity
@@ -81,31 +151,6 @@ export default function RainyDaysApp() {
       })
     }
   }, [user])
-
-  const loadWeatherData = async () => {
-    setLoading(true)
-    setError(null)
-
-    try {
-      const selectedCity = user?.selectedCity || "Mexicali"
-      const citiesToLoad = user?.customCities || defaultCities
-
-      const [weather, forecastData, citiesData] = await Promise.all([
-        getCurrentWeather(selectedCity),
-        getWeatherForecast(selectedCity),
-        getMultipleCitiesWeather(citiesToLoad),
-      ])
-
-      setCurrentWeather(weather)
-      setForecast(forecastData)
-      setCitiesWeather(citiesData)
-    } catch (err) {
-      setError("Error al cargar los datos del clima. Por favor, inténtalo de nuevo.")
-      console.error("Weather API Error:", err)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const handleLogin = () => {
     setLoginError(null)
@@ -149,7 +194,7 @@ export default function RainyDaysApp() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100">
       {/* Header */}
       <header className="bg-blue-500 text-white p-4 shadow-lg">
-        <div className="max-w-7xl mx-auto flex items-center justify-center">
+        <div className="max-w-7xl mx-auto flex items-center mt-18  justify-center">
           <div className="flex items-center gap-2">
             <AppLogo size="md" />
             <h1 className="text-xl font-semibold">Rainy Days</h1>
@@ -188,7 +233,7 @@ export default function RainyDaysApp() {
                   ) : currentWeather ? (
                     <div className="mb-6">
                       <div className="mb-6">
-                        <WeatherIcon weatherCode={currentWeather.weatherCode} size="lg" animated={true} />
+                        <WeatherIcon weatherCode={currentWeather.weatherCode} size="lg" />
                       </div>
                       <div className="flex items-center justify-center gap-2 mb-2">
                         <MapPin className="h-5 w-5 text-gray-600" />

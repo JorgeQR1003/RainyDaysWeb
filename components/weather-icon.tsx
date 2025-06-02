@@ -4,7 +4,7 @@ interface WeatherIconProps {
   animated?: boolean
 }
 
-export function WeatherIcon({ weatherCode, size = "md", animated = false }: WeatherIconProps) {
+export function WeatherIcon({ weatherCode, size = "md" }: WeatherIconProps) {
   const sizeClasses = {
     sm: "w-16 h-16",
     md: "w-32 h-32",
@@ -12,7 +12,6 @@ export function WeatherIcon({ weatherCode, size = "md", animated = false }: Weat
   }
 
   // Determine weather condition based on weather code
-  const isClear = weatherCode === 0 || weatherCode === 1
   const isCloudy = weatherCode === 2 || weatherCode === 3
   const isRainy = (weatherCode >= 51 && weatherCode <= 67) || (weatherCode >= 80 && weatherCode <= 82)
   const isSnowy = weatherCode >= 71 && weatherCode <= 86
