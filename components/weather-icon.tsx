@@ -1,7 +1,9 @@
+import Image from "next/image";
+
 interface WeatherIconProps {
-  weatherCode: number
-  size?: "sm" | "md" | "lg"
-  animated?: boolean
+  weatherCode: number;
+  size?: "sm" | "md" | "lg";
+  animated?: boolean;
 }
 
 export function WeatherIcon({ weatherCode, size = "md" }: WeatherIconProps) {
@@ -9,18 +11,28 @@ export function WeatherIcon({ weatherCode, size = "md" }: WeatherIconProps) {
     sm: "w-16 h-16",
     md: "w-32 h-32",
     lg: "w-48 h-48",
-  }
+  };
 
   // Determine weather condition based on weather code
-  const isCloudy = weatherCode === 2 || weatherCode === 3
-  const isRainy = (weatherCode >= 51 && weatherCode <= 67) || (weatherCode >= 80 && weatherCode <= 82)
-  const isSnowy = weatherCode >= 71 && weatherCode <= 86
-  const isThunderstorm = weatherCode >= 95
+  const isCloudy = weatherCode === 2 || weatherCode === 3;
+  const isRainy =
+    (weatherCode >= 51 && weatherCode <= 67) ||
+    (weatherCode >= 80 && weatherCode <= 82);
+  const isSnowy = weatherCode >= 71 && weatherCode <= 86;
+  const isThunderstorm = weatherCode >= 95;
 
   return (
-    <div className={`${sizeClasses[size]} mx-auto relative flex items-center justify-center`}>
+    <div
+      className={`${sizeClasses[size]} mx-auto relative flex items-center justify-center`}
+    >
       {/* Main Sun Logo - No Animation */}
-      <img src="/sun-logo.png" alt="Weather" className="w-full h-full object-contain" />
+      <Image
+        src="/sun-logo.png"
+        alt="Weather"
+        width={128}
+        height={128}
+        className="w-full h-full object-contain"
+      />
 
       {/* Weather overlay effects */}
       {isRainy && (
@@ -55,7 +67,9 @@ export function WeatherIcon({ weatherCode, size = "md" }: WeatherIconProps) {
         </div>
       )}
 
-      {isCloudy && <div className="absolute top-2 right-2 w-6 h-4 bg-gray-300 rounded-full opacity-70"></div>}
+      {isCloudy && (
+        <div className="absolute top-2 right-2 w-6 h-4 bg-gray-300 rounded-full opacity-70"></div>
+      )}
 
       {isThunderstorm && (
         <div
@@ -64,5 +78,5 @@ export function WeatherIcon({ weatherCode, size = "md" }: WeatherIconProps) {
         ></div>
       )}
     </div>
-  )
+  );
 }

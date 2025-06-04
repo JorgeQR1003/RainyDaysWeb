@@ -1,6 +1,8 @@
+import Image from "next/image";
+
 interface AppLogoProps {
-  size?: "sm" | "md" | "lg" | "xl"
-  className?: string
+  size?: "sm" | "md" | "lg" | "xl";
+  className?: string;
 }
 
 export function AppLogo({ size = "md", className = "" }: AppLogoProps) {
@@ -9,7 +11,15 @@ export function AppLogo({ size = "md", className = "" }: AppLogoProps) {
     md: "h-8 w-8",
     lg: "h-12 w-12",
     xl: "h-16 w-16",
-  }
+  };
 
-  return <img src="/sun-logo.png" alt="Rainy Days" className={`object-contain ${sizeClasses[size]} ${className}`} />
+  return (
+    <Image
+      src="/sun-logo.png"
+      alt="Rainy Days"
+      width={64}
+      height={64}
+      className={`object-contain ${sizeClasses[size]} ${className}`}
+    />
+  );
 }

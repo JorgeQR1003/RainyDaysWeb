@@ -1,13 +1,12 @@
-import type React from "react"
-import type { Metadata } from "next"
-import { Inter } from "next/font/google"
-import "./globals.css"
-
-const inter = Inter({ subsets: ["latin"] })
+import { Inter } from "next/font/google";
+import type { Metadata } from "next";
+import "./globals.css";
+import ClientLayout from "./client-layout";
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Rainy Days - Aplicación del Clima",
-  description: "Tu compañero personalizado del clima con iconos adorables",
+  description: "Tu compañero personalizado del clima con iconos agradables",
   icons: {
     icon: [
       {
@@ -23,21 +22,26 @@ export const metadata: Metadata = {
       },
     ],
   },
-}
+};
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
   return (
     <html lang="es">
       <head>
         <link rel="icon" href="/sun-logo.png" type="image/png" />
         <link rel="apple-touch-icon" href="/sun-logo.png" />
+        <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#f59e0b" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
       </head>
-      <body className={inter.className}>{children}</body>
+      <body className={inter.className}>
+        <ClientLayout>{children}</ClientLayout>
+      </body>
     </html>
-  )
+  );
 }
