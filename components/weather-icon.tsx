@@ -5,7 +5,7 @@ interface WeatherIconProps {
   size?: "sm" | "md" | "lg";
 }
 
-export function WeatherIcon({ weatherCode, size = "md" }: WeatherIconProps) {
+export function WeatherIcon({ size = "md" }: WeatherIconProps) {
   const sizeClasses = {
     sm: "w-16 h-16",
     md: "w-32 h-32",

@@ -16,9 +16,8 @@ import {
   getCurrentFirebaseUser,
   startFirebaseAuthListener,
   updateAppUserExtras,
-  isLoggedInFirebase,
   type User as UserType,
-} from "@/lib/firebaseAuth"; // Asegúrate de que coincide con el nombre del archivo
+} from "@/lib/firebaseAuth"; 
 import {
   getCurrentWeather,
   getWeatherForecast,
@@ -61,12 +60,12 @@ export default function RainyDaysApp() {
       }
     })();
 
-    const handleUserStateChange = (e: any) => {
-      setUser(e.detail as UserType | null);
+    const handleUserStateChange = (e: CustomEvent<UserType | null>) => {
+      setUser(e.detail);
     };
-    window.addEventListener("userStateChanged", handleUserStateChange);
+    window.addEventListener("userStateChanged", handleUserStateChange as EventListener);
     return () => {
-      window.removeEventListener("userStateChanged", handleUserStateChange);
+      window.removeEventListener("userStateChanged", handleUserStateChange as EventListener);
     };
   }, []);
 
@@ -406,7 +405,7 @@ export default function RainyDaysApp() {
                     <div className="text-center mb-8">
                       <AppLogo size="xl" className="mx-auto mb-4" />
                       <h2 className="text-3xl font-bold text-gray-800 mb-2 mt-4">
-                        ¡Hola, {user.username}!  {/* ← Ahora mostrará el nombre */}
+                        ¡Hola, {user.username}! 
                       </h2>
                       <p className="text-lg text-gray-600">Perfil y Configuración</p>
                     </div>
