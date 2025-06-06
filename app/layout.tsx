@@ -5,13 +5,13 @@ import ClientLayout from "./client-layout";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Rainy Days - Aplicación del Clima",
-  description: "Tu compañero personalizado del clima con iconos agradables",
+  title: "Rainy Days",
+  description: "Clima con iconos chilos!!",
   icons: {
     icon: [
       {
         url: "/sun-logo.png",
-        sizes: "any",
+        sizes: "180x180",
       },
     ],
     apple: [
