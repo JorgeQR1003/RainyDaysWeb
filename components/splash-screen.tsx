@@ -12,11 +12,8 @@ const poppins = Poppins({
 
 export default function SplashScreen() {
   useEffect(() => {
-    // Simulate loading time - in a real app, you might check for resources or data
-    const timer = setTimeout(() => {
-      // Here you would navigate to your main app after splash screen
-      // For example: router.push('/home')
-    }, 3000); // 3 seconds splash screen
+    const timer = setTimeout(() => {      
+    }, 3000); 
 
     return () => clearTimeout(timer);
   }, []);

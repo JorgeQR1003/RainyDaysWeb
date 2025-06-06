@@ -9,7 +9,16 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { WeatherIcon } from "@/components/weather-icon";
 import { CityManager } from "@/components/city-manager";
-import { AuthService, type User as UserType } from "@/lib/auth";
+import {
+  registerWithFirebase,
+  loginWithFirebase,
+  logoutFromFirebase,
+  getCurrentFirebaseUser,
+  startFirebaseAuthListener,
+  updateAppUserExtras,
+  isLoggedInFirebase,
+  type User as UserType,
+} from "@/lib/firebaseAuth"; // Asegúrate de que coincide con el nombre del archivo
 import {
   getCurrentWeather,
   getWeatherForecast,
@@ -19,7 +28,6 @@ import {
 } from "@/lib/weather-api";
 import { AppLogo } from "@/components/app-logo";
 
-// Default cities moved outside component to prevent infinite loops
 const defaultCities = [
   "Mexicali",
   "Tijuana",
@@ -30,36 +38,33 @@ const defaultCities = [
 
 export default function RainyDaysApp() {
   const [activeTab, setActiveTab] = useState("weather");
-  const [username, setUsername] = useState("");
+  const [name, setName] = useState("");         
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isRegistering, setIsRegistering] = useState(false);
   const [user, setUser] = useState<UserType | null>(null);
-  const [currentWeather, setCurrentWeather] = useState<WeatherData | null>(
-    null
-  );
+  const [currentWeather, setCurrentWeather] = useState<WeatherData | null>(null);
   const [forecast, setForecast] = useState<ForecastDay[]>([]);
   const [citiesWeather, setCitiesWeather] = useState<WeatherData[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showCityManager, setShowCityManager] = useState(false);
-  const [loginError, setLoginError] = useState<string | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
-    const currentUser = AuthService.getCurrentUser();
-    if (currentUser) {
-      setUser(currentUser);
-    }
+    startFirebaseAuthListener();
 
-    // Start session maintenance
-    AuthService.startSessionMaintenance();
+    (async () => {
+      const firebaseUser = await getCurrentFirebaseUser();
+      if (firebaseUser) {
+        setUser(firebaseUser);
+      }
+    })();
 
-    // Listen for user state changes from other tabs
-    const handleUserStateChange = () => {
-      const updatedUser = AuthService.getCurrentUser();
-      setUser(updatedUser);
+    const handleUserStateChange = (e: any) => {
+      setUser(e.detail as UserType | null);
     };
-
     window.addEventListener("userStateChanged", handleUserStateChange);
-
     return () => {
       window.removeEventListener("userStateChanged", handleUserStateChange);
     };
@@ -71,8 +76,7 @@ export default function RainyDaysApp() {
       setError(null);
 
       try {
-        const selectedCity =
-          selectedCityParam || user?.selectedCity || "Mexicali";
+        const selectedCity = selectedCityParam || user?.selectedCity || "Mexicali";
         const citiesToLoad = user?.customCities || defaultCities;
 
         const [weather, forecastData, citiesData] = await Promise.all([
@@ -85,9 +89,7 @@ export default function RainyDaysApp() {
         setForecast(forecastData);
         setCitiesWeather(citiesData);
       } catch (err) {
-        setError(
-          "Error al cargar los datos del clima. Usando datos de ejemplo."
-        );
+        setError("Error al cargar los datos del clima. Usando datos de ejemplo.");
         console.error("Weather API Error:", err);
       } finally {
         setLoading(false);
@@ -100,78 +102,71 @@ export default function RainyDaysApp() {
     loadWeatherData();
   }, [loadWeatherData]);
 
-  useEffect(() => {
-    // Extend session on user activity
-    const handleUserActivity = () => {
-      if (user) {
-        AuthService.extendSession();
-      }
-    };
-
-    const events = [
-      "mousedown",
-      "mousemove",
-      "keypress",
-      "scroll",
-      "touchstart",
-      "click",
-    ];
-
-    events.forEach((event) => {
-      document.addEventListener(event, handleUserActivity, true);
-    });
-
-    return () => {
-      events.forEach((event) => {
-        document.removeEventListener(event, handleUserActivity, true);
-      });
-    };
-  }, [user]);
-
-  const handleLogin = () => {
-    setLoginError(null);
-
-    if (!username.trim() || !password.trim()) {
-      setLoginError("Por favor ingresa tu nombre de usuario y contraseña");
+  const handleLogin = async () => {
+    setAuthError(null);
+    if (!email.trim() || !password.trim()) {
+      setAuthError("Por favor ingresa tu correo y contraseña");
       return;
     }
-
-    const loggedInUser = AuthService.login(username, password);
-    if (loggedInUser) {
-      setUser(loggedInUser);
+    const result = await loginWithFirebase(email, password);
+    if (result) {
+      setUser(result);
       setActiveTab("weather");
-      setUsername("");
+      setEmail("");
       setPassword("");
+      setName("");
     } else {
-      setLoginError("Credenciales inválidas");
+      setAuthError("Credenciales inválidas");
     }
   };
 
-  const handleLogout = () => {
-    AuthService.logout();
+  const handleRegister = async () => {
+    setAuthError(null);
+    if (!name.trim() || !email.trim() || !password.trim()) {
+      setAuthError("Por favor ingresa tu nombre, correo y contraseña");
+      return;
+    }
+    const result = await registerWithFirebase(name, email, password);
+    if (result) {
+      setUser(result);
+      setActiveTab("weather");
+      setName("");
+      setEmail("");
+      setPassword("");
+      setIsRegistering(false);
+    } else {
+      setAuthError("No se pudo registrar. Revisa los datos.");
+    }
+  };
+
+  const handleLogout = async () => {
+    await logoutFromFirebase();
     setUser(null);
     setActiveTab("login");
+    setName("");
+    setEmail("");
+    setPassword("");
   };
 
   const handleCityChange = (city: string) => {
     if (user) {
       const updatedUser = { ...user, selectedCity: city };
-      AuthService.updateUser(updatedUser);
+      updateAppUserExtras(updatedUser);
       setUser(updatedUser);
       loadWeatherData(city);
     }
   };
 
   const handleUserUpdate = (updatedUser: UserType) => {
+    updateAppUserExtras(updatedUser);
     setUser(updatedUser);
     loadWeatherData();
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100">
-      {/* Header */}
       <header className="bg-blue-500 text-white p-4 shadow-lg">
-        <div className="max-w-7xl mx-auto flex items-center mt-18  justify-center">
+        <div className="max-w-7xl mx-auto flex items-center justify-center mt-18">
           <div className="flex items-center gap-2">
             <AppLogo size="md" />
             <h1 className="text-xl font-semibold">Rainy Days</h1>
@@ -186,7 +181,6 @@ export default function RainyDaysApp() {
           </div>
         )}
 
-        {/* City Manager Modal */}
         {showCityManager && user && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="w-full max-w-md">
@@ -204,13 +198,12 @@ export default function RainyDaysApp() {
             <TabsTrigger value="weather">Clima</TabsTrigger>
             <TabsTrigger value="climate">Ciudades</TabsTrigger>
             <TabsTrigger value="login">
-              {user ? "Perfil" : "Iniciar Sesión"}
+              {user ? "Perfil" : isRegistering ? "Regístrate" : "Iniciar Sesión"}
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="weather" className="space-y-6">
             <div className="grid lg:grid-cols-2 gap-8">
-              {/* Current Weather Card */}
               <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl">
                 <CardContent className="p-8 text-center">
                   {loading ? (
@@ -273,7 +266,6 @@ export default function RainyDaysApp() {
                     </div>
                   )}
 
-                  {/* City Selector */}
                   <div className="mt-6">
                     <Label className="text-sm font-medium text-gray-700 mb-2 block">
                       {user ? "Tus Ciudades:" : "Seleccionar Ciudad:"}
@@ -304,7 +296,6 @@ export default function RainyDaysApp() {
                 </CardContent>
               </Card>
 
-              {/* Weekly Forecast */}
               <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl">
                 <CardHeader>
                   <CardTitle className="text-2xl font-bold text-gray-800 text-center">
@@ -328,9 +319,7 @@ export default function RainyDaysApp() {
                           key={index}
                           className="grid grid-cols-3 gap-4 items-center py-2 border-b border-gray-100 last:border-b-0"
                         >
-                          <div className="font-medium text-gray-800">
-                            {day.day}
-                          </div>
+                          <div className="font-medium text-gray-800">{day.day}</div>
                           <div className="text-center">
                             <span className="inline-block bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-semibold">
                               {day.maxTemp}°
@@ -376,7 +365,7 @@ export default function RainyDaysApp() {
                   </div>
                 ) : (
                   <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {citiesWeather.map((cityWeather, index) => (
+                    {(citiesWeather || []).map((cityWeather, index) => (
                       <Card
                         key={index}
                         className="bg-blue-50 border-2 border-blue-200 hover:shadow-lg transition-shadow"
@@ -417,21 +406,16 @@ export default function RainyDaysApp() {
                     <div className="text-center mb-8">
                       <AppLogo size="xl" className="mx-auto mb-4" />
                       <h2 className="text-3xl font-bold text-gray-800 mb-2 mt-4">
-                        ¡Hola, {user.username}!
+                        ¡Hola, {user.username}!  {/* ← Ahora mostrará el nombre */}
                       </h2>
-                      <p className="text-lg text-gray-600">
-                        Perfil y Configuración
-                      </p>
+                      <p className="text-lg text-gray-600">Perfil y Configuración</p>
                     </div>
 
                     <div className="space-y-6">
                       <div className="bg-blue-50 p-4 rounded-lg">
-                        <h3 className="font-semibold text-gray-800 mb-2">
-                          Tus Ciudades
-                        </h3>
+                        <h3 className="font-semibold text-gray-800 mb-2">Tus Ciudades</h3>
                         <p className="text-sm text-gray-600 mb-3">
-                          Tienes {user.customCities.length} ciudades
-                          configuradas
+                          Tienes {user.customCities.length} ciudades configuradas
                         </p>
                         <Button
                           variant="outline"
@@ -443,11 +427,7 @@ export default function RainyDaysApp() {
                         </Button>
                       </div>
 
-                      <Button
-                        onClick={handleLogout}
-                        variant="destructive"
-                        className="w-full"
-                      >
+                      <Button onClick={handleLogout} variant="destructive" className="w-full">
                         <LogOut className="h-4 w-4 mr-2" />
                         Cerrar Sesión
                       </Button>
@@ -463,31 +443,57 @@ export default function RainyDaysApp() {
                         ¡Bienvenido!
                       </h2>
                       <p className="text-lg text-gray-600">
-                        Inicia sesión para personalizar tus ciudades
+                        {isRegistering
+                          ? "Crea tu cuenta"
+                          : "Inicia sesión para personalizar tus ciudades"}
                       </p>
                     </div>
 
-                    {loginError && (
+                    {authError && (
                       <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-                        {loginError}
+                        {authError}
                       </div>
                     )}
 
                     <div className="space-y-6">
+                      {isRegistering && (
+                        <div>
+                          <Label
+                            htmlFor="name"
+                            className="text-lg font-semibold text-gray-800 mb-2 block"
+                          >
+                            NOMBRE:
+                          </Label>
+                          <Input
+                            id="name"
+                            type="text"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            className="h-12 text-lg border-2 border-blue-200 focus:border-blue-400"
+                            placeholder="Ingresa tu nombre"
+                            onKeyPress={(e) =>
+                              e.key === "Enter" && handleRegister()
+                            }
+                          />
+                        </div>
+                      )}
                       <div>
                         <Label
-                          htmlFor="username"
+                          htmlFor="email"
                           className="text-lg font-semibold text-gray-800 mb-2 block"
                         >
-                          NOMBRE DE USUARIO:
+                          CORREO ELECTRÓNICO:
                         </Label>
                         <Input
-                          id="username"
-                          value={username}
-                          onChange={(e) => setUsername(e.target.value)}
+                          id="email"
+                          type="email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
                           className="h-12 text-lg border-2 border-blue-200 focus:border-blue-400"
-                          placeholder="Ingresa tu nombre de usuario"
-                          onKeyPress={(e) => e.key === "Enter" && handleLogin()}
+                          placeholder="Ingresa tu correo"
+                          onKeyPress={(e) =>
+                            e.key === "Enter" && (isRegistering ? handleRegister() : handleLogin())
+                          }
                         />
                       </div>
                       <div>
@@ -504,26 +510,53 @@ export default function RainyDaysApp() {
                           onChange={(e) => setPassword(e.target.value)}
                           className="h-12 text-lg border-2 border-blue-200 focus:border-blue-400"
                           placeholder="Ingresa tu contraseña"
-                          onKeyPress={(e) => e.key === "Enter" && handleLogin()}
+                          onKeyPress={(e) =>
+                            e.key === "Enter" && (isRegistering ? handleRegister() : handleLogin())
+                          }
                         />
                       </div>
                       <Button
-                        onClick={handleLogin}
+                        onClick={isRegistering ? handleRegister : handleLogin}
                         className="w-full h-12 text-lg bg-blue-500 hover:bg-blue-600"
                       >
-                        Iniciar Sesión
+                        {isRegistering ? "Registrarse" : "Iniciar Sesión"}
                       </Button>
                     </div>
 
-                    <div className="mt-6 text-sm text-gray-500 text-center">
-                      <p>
-                        Demo: Usa cualquier nombre de usuario y contraseña para
-                        iniciar sesión
-                      </p>
-                      <p>
-                        ¡Una vez que inicies sesión, podrás personalizar tus
-                        ciudades!
-                      </p>
+                    <div className="mt-4 text-sm text-gray-500 text-center">
+                      {isRegistering ? (
+                        <p>
+                          ¿Ya tienes cuenta?{" "}
+                          <button
+                            onClick={() => {
+                              setIsRegistering(false);
+                              setAuthError(null);
+                              setName("");
+                              setEmail("");
+                              setPassword("");
+                            }}
+                            className="text-blue-600 hover:underline"
+                          >
+                            Inicia sesión
+                          </button>
+                        </p>
+                      ) : (
+                        <p>
+                          ¿No tienes cuenta?{" "}
+                          <button
+                            onClick={() => {
+                              setIsRegistering(true);
+                              setAuthError(null);
+                              setName("");
+                              setEmail("");
+                              setPassword("");
+                            }}
+                            className="text-blue-600 hover:underline"
+                          >
+                            Regístrate
+                          </button>
+                        </p>
+                      )}
                     </div>
                   </CardContent>
                 </Card>

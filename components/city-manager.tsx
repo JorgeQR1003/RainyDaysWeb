@@ -1,58 +1,65 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Plus, X, Settings } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { getAvailableCities } from "@/lib/weather-api"
-import { AuthService, type User } from "@/lib/auth"
+import { useState } from "react";
+import { Plus, X, Settings } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { getAvailableCities } from "@/lib/weather-api";
+import { type User } from "@/lib/firebaseAuth"; 
+import { updateAppUserExtras } from "@/lib/firebaseAuth"; 
 
 interface CityManagerProps {
-  user: User
-  onUserUpdate: (user: User) => void
-  onClose: () => void
+  user: User;
+  onUserUpdate: (user: User) => void;
+  onClose: () => void;
 }
 
 export function CityManager({ user, onUserUpdate, onClose }: CityManagerProps) {
-  const [newCity, setNewCity] = useState("")
-  const [showSuggestions, setShowSuggestions] = useState(false)
+  const [newCity, setNewCity] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
-  const availableCities = getAvailableCities()
+  const availableCities = getAvailableCities();
   const filteredCities = availableCities.filter(
-    (city) => city.toLowerCase().includes(newCity.toLowerCase()) && !user.customCities.includes(city),
-  )
+    (city) =>
+      city.toLowerCase().includes(newCity.toLowerCase()) &&
+      !user.customCities.includes(city)
+  );
 
   const addCity = (cityName: string) => {
-    if (cityName && !user.customCities.includes(cityName) && availableCities.includes(cityName)) {
-      const updatedUser = {
+    if (
+      cityName &&
+      !user.customCities.includes(cityName) &&
+      availableCities.includes(cityName)
+    ) {
+      const updatedUser: User = {
         ...user,
         customCities: [...user.customCities, cityName],
-      }
-      AuthService.updateUser(updatedUser)
-      onUserUpdate(updatedUser)
-      setNewCity("")
-      setShowSuggestions(false)
+      };
+      updateAppUserExtras(updatedUser);
+      onUserUpdate(updatedUser);
+      setNewCity("");
+      setShowSuggestions(false);
     }
-  }
+  };
 
   const removeCity = (cityName: string) => {
     if (user.customCities.length > 1) {
-      // Keep at least one city
-      const updatedUser = {
+      const updatedUser: User = {
         ...user,
         customCities: user.customCities.filter((city) => city !== cityName),
-        selectedCity: user.selectedCity === cityName ? user.customCities[0] : user.selectedCity,
-      }
-      AuthService.updateUser(updatedUser)
-      onUserUpdate(updatedUser)
+        selectedCity:
+          user.selectedCity === cityName ? user.customCities[0] : user.selectedCity,
+      };
+      updateAppUserExtras(updatedUser);
+      onUserUpdate(updatedUser);
     }
-  }
+  };
 
   return (
     <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-xl">
-      <CardHeader className="flex flex-row items-center justify-between">
+      <CardHeader className="flex items-center justify-between">
         <CardTitle className="text-2xl font-bold text-gray-800 flex items-center gap-2">
           <Settings className="h-6 w-6" />
           Administrar Ciudades
@@ -62,27 +69,30 @@ export function CityManager({ user, onUserUpdate, onClose }: CityManagerProps) {
         </Button>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Add New City */}
         <div className="space-y-2">
-          <Label className="text-sm font-medium text-gray-700">Agregar Nueva Ciudad</Label>
+          <Label className="text-sm font-medium text-gray-700">
+            Agregar Nueva Ciudad
+          </Label>
           <div className="relative">
             <div className="flex gap-2">
               <Input
                 value={newCity}
                 onChange={(e) => {
-                  setNewCity(e.target.value)
-                  setShowSuggestions(true)
+                  setNewCity(e.target.value);
+                  setShowSuggestions(true);
                 }}
                 onFocus={() => setShowSuggestions(true)}
                 placeholder="Escribe el nombre de la ciudad..."
                 className="flex-1"
               />
-              <Button onClick={() => addCity(newCity)} disabled={!newCity || !availableCities.includes(newCity)}>
+              <Button
+                onClick={() => addCity(newCity)}
+                disabled={!newCity || !availableCities.includes(newCity)}
+              >
                 <Plus className="h-4 w-4" />
               </Button>
             </div>
 
-            {/* City Suggestions */}
             {showSuggestions && newCity && filteredCities.length > 0 && (
               <div className="absolute top-full left-0 right-0 z-10 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
                 {filteredCities.slice(0, 8).map((city) => (
@@ -99,7 +109,6 @@ export function CityManager({ user, onUserUpdate, onClose }: CityManagerProps) {
           </div>
         </div>
 
-        {/* Current Cities */}
         <div className="space-y-2">
           <Label className="text-sm font-medium text-gray-700">Tus Ciudades</Label>
           <div className="space-y-2">
@@ -111,7 +120,9 @@ export function CityManager({ user, onUserUpdate, onClose }: CityManagerProps) {
                 <span className="font-medium text-gray-800">{city}</span>
                 <div className="flex items-center gap-2">
                   {city === user.selectedCity && (
-                    <span className="text-xs bg-blue-500 text-white px-2 py-1 rounded-full">Actual</span>
+                    <span className="text-xs bg-blue-500 text-white px-2 py-1 rounded-full">
+                      Actual
+                    </span>
                   )}
                   {user.customCities.length > 1 && (
                     <Button
@@ -130,10 +141,10 @@ export function CityManager({ user, onUserUpdate, onClose }: CityManagerProps) {
         </div>
 
         <div className="text-sm text-gray-500">
-          Puedes agregar ciudades de nuestra lista disponible. Tus ciudades seleccionadas aparecerán tanto en la sección
-          de Clima como en la de Ciudades.
+          Puedes agregar ciudades de nuestra lista disponible. Tus ciudades seleccionadas
+          aparecerán tanto en la sección de Clima como en la de Ciudades.
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
